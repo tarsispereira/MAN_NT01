@@ -11,6 +11,10 @@
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
+    <!-- SDKs do Firebase (Versão 9 Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -955,9 +959,25 @@
 </div>
 
 <script>
+    // -------------------------------------------------------------
+    // CONFIGURAÇÃO DO FIREBASE CONSOLE
+    // -------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "SUA_API_KEY_AQUI",
+        authDomain: "SEU_PROJETO.firebaseapp.com",
+        projectId: "SEU_PROJETO_ID",
+        storageBucket: "SEU_PROJETO.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcdef123456"
+    };
+
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const anoAtualSistema = new Date().getFullYear();
 
-    /* GERENCIAMENTO DE UTILIZADORES E SESSÃO */
+    /* UTILIZADORES E SESSÃO EM TEMPO REAL */
     const usuariosPadrao = [
         {
             login: 'ADM.TARSIS.PEREIRA',
@@ -971,30 +991,44 @@
         }
     ];
 
-    let usuariosBD = JSON.parse(localStorage.getItem('nova_tubos_usuarios')) || usuariosPadrao;
+    let usuariosBD = usuariosPadrao;
     let usuarioLogado = JSON.parse(sessionStorage.getItem('nova_tubos_sessao')) || null;
-    let sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
+    let sessoesAtivasBD = {};
 
-    function salvarUsuarios() {
-        localStorage.setItem('nova_tubos_usuarios', JSON.stringify(usuariosBD));
+    function escutarUtilizadores() {
+        db.collection("usuarios").onSnapshot(snapshot => {
+            if (snapshot.empty) {
+                usuariosPadrao.forEach(u => db.collection("usuarios").doc(u.login).set(u));
+            } else {
+                usuariosBD = [];
+                snapshot.forEach(doc => usuariosBD.push(doc.data()));
+                if (usuarioLogado && usuarioLogado.isAdm) {
+                    renderTableUsuarios();
+                }
+            }
+        });
+
+        db.collection("sessoes").onSnapshot(snapshot => {
+            sessoesAtivasBD = {};
+            snapshot.forEach(doc => {
+                sessoesAtivasBD[doc.id] = doc.data().timestamp;
+            });
+            if (usuarioLogado && usuarioLogado.isAdm) {
+                calcularUsuariosOnline();
+            }
+        });
     }
 
     function atualizarHeartbeat() {
         if (!usuarioLogado) return;
-        sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
-        sessoesAtivasBD[usuarioLogado.login] = Date.now();
-        localStorage.setItem('nova_tubos_sessoes_ativas', JSON.stringify(sessoesAtivasBD));
-
-        if (usuarioLogado.isAdm) {
-            calcularUsuariosOnline();
-        }
+        db.collection("sessoes").doc(usuarioLogado.login).set({
+            timestamp: Date.now()
+        });
     }
 
     function getUsuariosOnlineList() {
         const agora = Date.now();
         let lista = [];
-        sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
-
         for (let loginKey in sessoesAtivasBD) {
             if (agora - sessoesAtivasBD[loginKey] < 15000) {
                 const uObj = usuariosBD.find(u => u.login === loginKey);
@@ -1075,7 +1109,7 @@
             return;
         }
 
-        usuariosBD.push({
+        const novoUser = {
             login: login,
             senha: senha,
             email: email,
@@ -1084,11 +1118,12 @@
             podeEditar: false,
             podeAprovar: false,
             redefinicaoPendente: null
-        });
+        };
 
-        salvarUsuarios();
-        alert('Registo solicitado com sucesso! A conta precisa de ser aprovada pelo ADM.');
-        showAuthScreen('auth-login-screen');
+        db.collection("usuarios").doc(login).set(novoUser).then(() => {
+            alert('Registo solicitado com sucesso! A conta precisa de ser aprovada pelo ADM.');
+            showAuthScreen('auth-login-screen');
+        });
     }
 
     function solicitarRedefinicaoSenha(e) {
@@ -1102,17 +1137,15 @@
             return;
         }
 
-        user.redefinicaoPendente = novaSenha;
-        salvarUsuarios();
-        alert('Pedido de redefinição de senha enviado! O ADM precisa de aprovar a alteração.');
-        showAuthScreen('auth-login-screen');
+        db.collection("usuarios").doc(user.login).update({ redefinicaoPendente: novaSenha }).then(() => {
+            alert('Pedido de redefinição de senha enviado! O ADM precisa de aprovar a alteração.');
+            showAuthScreen('auth-login-screen');
+        });
     }
 
     function logout() {
         if (usuarioLogado) {
-            sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
-            delete sessoesAtivasBD[usuarioLogado.login];
-            localStorage.setItem('nova_tubos_sessoes_ativas', JSON.stringify(sessoesAtivasBD));
+            db.collection("sessoes").doc(usuarioLogado.login).delete();
         }
         sessionStorage.removeItem('nova_tubos_sessao');
         usuarioLogado = null;
@@ -1135,10 +1168,7 @@
         document.getElementById('btn-menu-lancamento').style.display = temPermissaoEdicao ? 'flex' : 'none';
         document.getElementById('btn-novo-equipamento').style.display = temPermissaoEdicao ? 'inline-block' : 'none';
 
-        popularSelectEquipamentos();
-        popularAnosFiltro();
-        renderDashboard();
-
+        iniciarSincronizacaoDados();
         setInterval(atualizarHeartbeat, 5000);
     }
 
@@ -1156,15 +1186,12 @@
             return;
         }
 
-        const u = usuariosBD.find(u => u.login === usuarioLogado.login);
-        if (u) {
-            u.senha = nova;
+        db.collection("usuarios").doc(usuarioLogado.login).update({ senha: nova }).then(() => {
             usuarioLogado.senha = nova;
-            salvarUsuarios();
             sessionStorage.setItem('nova_tubos_sessao', JSON.stringify(usuarioLogado));
             alert('Senha alterada com sucesso!');
             closeModal('modalMudarSenha');
-        }
+        });
     }
 
     /* GESTÃO DE UTILIZADORES (ADM) */
@@ -1178,7 +1205,6 @@
         const tbody = document.getElementById('table-body-usuarios');
         tbody.innerHTML = '';
 
-        // Atualizar totalizador de usuários cadastrados
         document.getElementById('total-registered-users').innerText = usuariosBD.length;
 
         usuariosBD.forEach(u => {
@@ -1198,7 +1224,7 @@
                     </td>
                     <td>${u.redefinicaoPendente ? '<span style="color:orange; font-weight:bold;">SIM</span>' : 'Não'}</td>
                     <td>
-                        <button onclick="toggleStatusUsuario('${u.login}')" style="padding: 3px 8px; font-size:0.7rem;" class="${u.ativo ? 'btn-orange' : 'btn-green'}">${u.ativo ? 'Desativar' : 'Aprovar / Ativar'}</button>
+                        <button onclick="toggleStatusUsuario('${u.login}', ${!u.ativo})" style="padding: 3px 8px; font-size:0.7rem;" class="${u.ativo ? 'btn-orange' : 'btn-green'}">${u.ativo ? 'Desativar' : 'Aprovar / Ativar'}</button>
                         <button onclick="apagarUsuario('${u.login}')" class="btn-red" style="padding: 3px 8px; font-size:0.7rem; margin-left:3px;">Apagar</button>
                         ${u.redefinicaoPendente ? `<button onclick="aprovarRedefinicao('${u.login}')" class="btn-blue" style="padding: 3px 8px; font-size:0.7rem; margin-left:3px;">Aprovar Senha</button>` : ''}
                     </td>
@@ -1207,60 +1233,62 @@
         });
     }
 
-    function toggleStatusUsuario(login) {
-        const u = usuariosBD.find(user => user.login === login);
-        if (u) {
-            u.ativo = !u.ativo;
-            salvarUsuarios();
-            renderTableUsuarios();
-        }
+    function toggleStatusUsuario(login, novoStatus) {
+        db.collection("usuarios").doc(login).update({ ativo: novoStatus });
     }
 
     function apagarUsuario(login) {
         if (confirm(`Tem certeza de que deseja APAGAR permanentemente a conta de ${login}?`)) {
-            usuariosBD = usuariosBD.filter(user => user.login !== login);
-            salvarUsuarios();
-            renderTableUsuarios();
+            db.collection("usuarios").doc(login).delete();
         }
     }
 
     function togglePermissao(login, campo, valor) {
-        const u = usuariosBD.find(user => user.login === login);
-        if (u) {
-            u[campo] = valor;
-            salvarUsuarios();
-        }
+        let updateObj = {};
+        updateObj[campo] = valor;
+        db.collection("usuarios").doc(login).update(updateObj);
     }
 
     function aprovarRedefinicao(login) {
         const u = usuariosBD.find(user => user.login === login);
         if (u && u.redefinicaoPendente) {
-            u.senha = u.redefinicaoPendente;
-            u.redefinicaoPendente = null;
-            salvarUsuarios();
-            alert(`Nova senha aprovada para o utilizador ${login}!`);
-            renderTableUsuarios();
+            db.collection("usuarios").doc(login).update({
+                senha: u.redefinicaoPendente,
+                redefinicaoPendente: null
+            }).then(() => {
+                alert(`Nova senha aprovada para o utilizador ${login}!`);
+            });
         }
     }
 
-    /* DADOS E LANÇAMENTOS KPIS */
+    /* DADOS E LANÇAMENTOS KPIS SINCRONIZADOS COM FIRESTORE */
     const listaEquipamentosPadrao = ['FORMADORA 5', 'FORMADORA 6', 'FORMADORA 9', 'SLITTER BQ', 'SLITTER BF'];
-    let listaEquipamentos = JSON.parse(localStorage.getItem('nova_tubos_equipamentos')) || listaEquipamentosPadrao;
-
-    const dadosIniciais = [
-        {
-            id: 1, ordem: '1000123', equipamento: 'SLITTER BQ', motivo: 'Falha no sensor do painel', executor: 'Gabriel Paulista', status: 'Finalizado',
-            area: 'Elétrica', tipo: 'Corretiva', prioridade: 'Alta', dataIni: `${anoAtualSistema}-03-01`, horaIni: '08:00', dataFim: `${anoAtualSistema}-03-01`, horaFim: '10:00',
-            custoPecas: 150, custoTerceiros: 0, custoOutros: 70, obsOutros: 'Alimentação técnica extra', obsCancelamento: '', mes: 3, ano: anoAtualSistema
-        }
-    ];
-
-    let ordensServico = JSON.parse(localStorage.getItem('nova_tubos_kpi_db')) || dadosIniciais;
+    let listaEquipamentos = listaEquipamentosPadrao;
+    let ordensServico = [];
     let charts = {};
 
-    function salvarLocal() {
-        localStorage.setItem('nova_tubos_kpi_db', JSON.stringify(ordensServico));
-        localStorage.setItem('nova_tubos_equipamentos', JSON.stringify(listaEquipamentos));
+    function iniciarSincronizacaoDados() {
+        db.collection("configuracoes").doc("equipamentos").onSnapshot(doc => {
+            if (doc.exists && doc.data().lista) {
+                listaEquipamentos = doc.data().lista;
+            } else {
+                db.collection("configuracoes").doc("equipamentos").set({ lista: listaEquipamentosPadrao });
+            }
+            popularSelectEquipamentos();
+            renderDashboard();
+        });
+
+        db.collection("ordens").onSnapshot(snapshot => {
+            ordensServico = [];
+            snapshot.forEach(doc => {
+                ordensServico.push({ docId: doc.id, ...doc.data() });
+            });
+            popularAnosFiltro();
+            renderDashboard();
+            if (document.getElementById('modalLista').classList.contains('active')) {
+                renderTableLista();
+            }
+        });
     }
 
     function popularSelectEquipamentos() {
@@ -1278,9 +1306,10 @@
         if (!anos.includes(anoAtualSistema)) anos.push(anoAtualSistema);
         anos.sort((a,b) => a - b);
 
+        const anoSel = selectAno.value || anoAtualSistema;
         selectAno.innerHTML = '';
         anos.forEach(a => {
-            selectAno.innerHTML += `<option value="${a}" ${a === anoAtualSistema ? 'selected' : ''}>${a}</option>`;
+            selectAno.innerHTML += `<option value="${a}" ${a == anoSel ? 'selected' : ''}>${a}</option>`;
         });
 
         document.getElementById('form-ano').value = anoAtualSistema;
@@ -1321,12 +1350,11 @@
         const nome = document.getElementById('novo-nome-equipamento').value.trim().toUpperCase();
         if (nome && !listaEquipamentos.includes(nome)) {
             listaEquipamentos.push(nome);
-            salvarLocal();
-            popularSelectEquipamentos();
-            document.getElementById('novo-nome-equipamento').value = '';
-            closeModal('modalNovoEquipamento');
-            renderDashboard();
-            alert(`Equipamento "${nome}" cadastrado com sucesso!`);
+            db.collection("configuracoes").doc("equipamentos").set({ lista: listaEquipamentos }).then(() => {
+                document.getElementById('novo-nome-equipamento').value = '';
+                closeModal('modalNovoEquipamento');
+                alert(`Equipamento "${nome}" cadastrado com sucesso!`);
+            });
         } else {
             alert('Equipamento já cadastrado ou nome inválido.');
         }
@@ -1348,15 +1376,15 @@
         divObs.style.display = (status === 'Cancelado') ? 'flex' : 'none';
     }
 
-    function editarOS(id) {
+    function editarOS(docId) {
         if (!usuarioLogado.isAdm && !usuarioLogado.podeEditar) return;
-        const os = ordensServico.find(o => o.id === id);
+        const os = ordensServico.find(o => o.docId === docId);
         if (!os) return;
 
         popularSelectEquipamentos();
         closeModal('modalLista');
 
-        document.getElementById('form-id-edit').value = os.id;
+        document.getElementById('form-id-edit').value = os.docId;
         document.getElementById('form-ordem').value = os.ordem;
         document.getElementById('form-equipamento').value = os.equipamento;
         document.getElementById('form-executor').value = os.executor;
@@ -1397,10 +1425,9 @@
             return;
         }
 
-        const editId = document.getElementById('form-id-edit').value;
+        const editDocId = document.getElementById('form-id-edit').value;
 
         const dadosOS = {
-            id: editId ? parseInt(editId) : Date.now(),
             ordem: document.getElementById('form-ordem').value,
             equipamento: document.getElementById('form-equipamento').value,
             executor: document.getElementById('form-executor').value,
@@ -1422,32 +1449,29 @@
             obsCancelamento: document.getElementById('form-obs-cancelamento').value
         };
 
-        if (editId) {
-            const index = ordensServico.findIndex(o => o.id === parseInt(editId));
-            if (index !== -1) ordensServico[index] = dadosOS;
-            alert('Lançamento atualizado com sucesso!');
+        if (editDocId) {
+            db.collection("ordens").doc(editDocId).update(dadosOS).then(() => {
+                closeModal('modalLancamento');
+                alert('Lançamento atualizado com sucesso na Nuvem!');
+            });
         } else {
-            ordensServico.push(dadosOS);
-            alert('Lançamento salvo com sucesso no KPI!');
+            db.collection("ordens").add(dadosOS).then(() => {
+                closeModal('modalLancamento');
+                alert('Lançamento salvo com sucesso na Nuvem!');
+            });
         }
-
-        salvarLocal();
-        popularAnosFiltro();
-        closeModal('modalLancamento');
-        renderDashboard();
     }
 
-    function removerOS(id) {
+    function removerOS(docId) {
         if (!usuarioLogado.isAdm) {
             alert('Apenas o ADM pode excluir lançamentos.');
             return;
         }
 
         if (confirm("Tem certeza de que deseja remover este lançamento?")) {
-            ordensServico = ordensServico.filter(o => o.id !== id);
-            salvarLocal();
-            renderTableLista();
-            renderDashboard();
+            db.collection("ordens").doc(docId).delete().then(() => {
+                renderTableLista();
+            });
         }
     }
 
@@ -1460,9 +1484,9 @@
         ordensServico.forEach(os => {
             let acoes = '-';
             if (temPermissaoEdicao) {
-                acoes = `<button onclick="editarOS(${os.id})" title="Editar" style="color:#3a86ff; border:none; background:none; cursor:pointer; margin-right:8px;"><i class="fa-solid fa-pen"></i></button>`;
+                acoes = `<button onclick="editarOS('${os.docId}')" title="Editar" style="color:#3a86ff; border:none; background:none; cursor:pointer; margin-right:8px;"><i class="fa-solid fa-pen"></i></button>`;
                 if (usuarioLogado.isAdm) {
-                    acoes += `<button onclick="removerOS(${os.id})" title="Excluir" style="color:red; border:none; background:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>`;
+                    acoes += `<button onclick="removerOS('${os.docId}')" title="Excluir" style="color:red; border:none; background:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>`;
                 }
             }
 
@@ -1788,18 +1812,11 @@
             try {
                 const parsed = JSON.parse(evt.target.result);
                 if (parsed.ordens) {
-                    ordensServico = parsed.ordens;
-                    listaEquipamentos = parsed.equipamentos || listaEquipamentosPadrao;
-                    if (parsed.usuarios) usuariosBD = parsed.usuarios;
-                } else {
-                    ordensServico = parsed;
+                    parsed.ordens.forEach(o => db.collection("ordens").add(o));
+                    if (parsed.equipamentos) db.collection("configuracoes").doc("equipamentos").set({ lista: parsed.equipamentos });
+                    if (parsed.usuarios) parsed.usuarios.forEach(u => db.collection("usuarios").doc(u.login).set(u));
                 }
-                salvarLocal();
-                salvarUsuarios();
-                popularAnosFiltro();
-                popularSelectEquipamentos();
-                renderDashboard();
-                alert("Backup importado com sucesso!");
+                alert("Backup importado com sucesso para o Banco de Dados!");
             } catch(err) {
                 alert("Ficheiro inválido.");
             }
@@ -1821,7 +1838,7 @@
     }
 
     window.onload = function() {
-        salvarUsuarios();
+        escutarUtilizadores();
 
         if (usuarioLogado) {
             iniciarInterface();
