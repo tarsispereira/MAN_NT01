@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Análise de KPIs | NOVA TUBOS</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #1a2536;
+            color: #333;
+            padding: 10px;
+        }
+
+        /* Ecrãs de Autenticação */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+        }
+
+        .auth-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .auth-card h2 {
+            text-align: center;
+            color: #1e3a60;
+            margin-bottom: 20px;
+        }
+
+        .auth-card .form-group {
+            margin-bottom: 15px;
+        }
+
+        .auth-card label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #1e3a60;
+        }
+
+        .auth-card input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .auth-links {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+
+        .auth-links a {
+            color: #3a86ff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .auth-links a:hover { text-decoration: underline; }
+
+        /* Estrutura Principal */
+        .dashboard-container {
+            display: none;
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+            background-color: #d2dbe4;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Header Responsivo */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1e3a60;
+            font-weight: bold;
+            font-size: clamp(1rem, 2vw, 1.3rem);
+        }
+
+        .creator-tag {
+            background-color: #1e3a60;
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: normal;
+        }
+
+        .user-badge {
+            background-color: #2a9d8f;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .online-badge {
+            background-color: #3a86ff;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-view-online {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 5px;
+        }
+        .btn-view-online:hover { text-decoration: underline; }
+
+        .nav-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: clamp(0.75rem, 1vw, 0.85rem);
+            font-weight: 600;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover { background-color: #e2e6ea; }
+        .nav-btn.active { background-color: #1e3a60; color: #fff; border-color: #1e3a60; }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.75rem;
+            color: #1e3a60;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        /* Title Bar */
+        .title-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #0d1b2a;
+            color: #fff;
+            padding: 12px 18px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .title-bar h1 { 
+            font-size: clamp(1rem, 1.8vw, 1.3rem); 
+            letter-spacing: 1px; 
+        }
+
+        .btn-group-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn-blue, .btn-green, .btn-red, .btn-orange {
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .btn-blue { background-color: #3a86ff; }
+        .btn-blue:hover { background-color: #2563eb; }
+        .btn-green { background-color: #2a9d8f; }
+        .btn-green:hover { background-color: #218378; }
+        .btn-red { background-color: #e63946; }
+        .btn-red:hover { background-color: #c92a37; }
+        .btn-orange { background-color: #f77f00; }
+        .btn-orange:hover { background-color: #d66d00; }
+
+        /* Grid de Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 6px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 100px;
+        }
+
+        .card-title { font-size: 0.75rem; font-weight: bold; color: #444; text-align: center; margin-bottom: 6px; }
+        .card-body { display: flex; align-items: center; justify-content: space-around; }
+        .card-icon { font-size: 1.8rem; }
+        .card-value { font-size: clamp(1.2rem, 1.8vw, 1.5rem); font-weight: bold; color: #111; }
+
+        .progress-bar-container { width: 100%; height: 7px; background-color: #e0e0e0; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+        .progress-bar { height: 100%; transition: width 0.3s; }
+        .percentage-text { font-size: 0.7rem; text-align: right; margin-top: 2px; font-weight: bold; color: #555; }
+
+        /* Filtro Card */
+        .filter-card { background-color: #ffffff; border-radius: 6px; padding: 10px; font-size: 0.8rem; }
+        .filter-card h4 { text-align: center; margin-bottom: 6px; color: #333; }
+        .filter-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .filter-group select { padding: 3px 5px; font-size: 0.75rem; border-radius: 3px; border: 1px solid #ccc; width: 100px; }
+
+        /* Gráficos */
+        .charts-grid-top { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
+            gap: 12px; 
+            margin-bottom: 12px; 
+        }
+
+        .charts-grid-bottom { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 12px; 
+        }
+
+        .chart-card { background-color: #ffffff; border-radius: 6px; padding: 12px; }
+        .chart-header { font-size: 0.85rem; font-weight: bold; text-align: center; color: #333; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+        .chart-container { position: relative; height: 190px; width: 100%; }
+        .chart-container-large { position: relative; height: 210px; width: 100%; }
+
+        /* Modais */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; padding: 10px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 1100px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1e3a60; padding-bottom: 10px; margin-bottom: 15px; }
+        .close-btn { font-size: 1.5rem; cursor: pointer; border: none; background: none; }
+
+        .form-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            background: #f8f9fa; 
+            padding: 12px; 
+            border-radius: 6px; 
+        }
+
+        .form-group { display: flex; flex-direction: column; font-size: 0.8rem; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label { margin-bottom: 4px; font-weight: bold; color: #1e3a60; }
+        .form-group input, .form-group select, .form-group textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+
+        .data-table-container { overflow-x: auto; width: 100%; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 10px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; white-space: nowrap; }
+        .data-table th { background-color: #1e3a60; color: white; }
+
+        .summary-box {
+            background-color: #1e3a60;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* Relatório Oculto em PDF */
+        #pdf-table-temp { display: none; background: #fff; padding: 20px; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; color: #333; }
+        .pdf-header-table { width: 100%; border-bottom: 2px solid #1e3a60; padding-bottom: 10px; margin-bottom: 15px; }
+        .pdf-report-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+        .pdf-report-table th { background-color: #1e3a60; color: #ffffff; padding: 6px 4px; border: 1px solid #0d1b2a; text-align: left; }
+        .pdf-report-table td { padding: 5px 4px; border: 1px solid #cccccc; }
+        .pdf-report-table tr:nth-child(even) { background-color: #f2f5f8; }
+        .pdf-report-footer { margin-top: 15px; display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #1e3a60; border-top: 1px solid #1e3a60; padding-top: 8px; }
+
+        @media (max-width: 600px) {
+            body { padding: 5px; }
+            .dashboard-container { padding: 10px; }
+            .header { flex-direction: column; align-items: stretch; text-align: center; }
+            .brand { justify-content: center; }
+            .nav-buttons { justify-content: center; }
+            .header-actions { justify-content: center; }
+            .title-bar { flex-direction: column; text-align: center; }
+            .btn-group-header { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ECRÃ DE LOGIN -->
+<div class="auth-container" id="auth-login-screen">
+    <div class="auth-card">
+        <h2><i class="fa-solid fa-industry" style="color: #3a86ff;"></i> NOVA TUBOS</h2>
+        <form onsubmit="realizarLogin(event)">
+            <div class="form-group">
+                <label>Nome do Login</label>
+                <input type="text" id="login-usuario" required placeholder="Ex: ADM.TARSIS.PEREIRA">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="login-senha" required placeholder="Digite a sua senha">
+            </div>
+            <button type="submit" class="btn-blue" style="width: 100%; padding: 10px;">Entrar no Sistema</button>
+        </form>
+        <div class="auth-links">
+            <a onclick="showAuthScreen('auth-register-screen')">Criar Nova Conta</a>
+            <a onclick="showAuthScreen('auth-forgot-screen')">Esqueci a Senha</a>
+        </div>
+    </div>
+</div>
+
+<!-- ECRÃ DE REGISTO DE UTILIZADOR -->
+<div class="auth-container" id="auth-register-screen" style="display: none;">
+    <div class="auth-card">
+        <h2>Criar Conta de Utilizador</h2>
+        <form onsubmit="cadastrarUsuario(event)">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="reg-email" required placeholder="seuemail@novatubos.com">
+            </div>
+            <div class="form-group">
+                <label>Nome do Login</label>
+                <input type="text" id="reg-login" required placeholder="Ex: gabriel.paulista">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="reg-senha" required placeholder="Crie uma senha forte">
+            </div>
+            <button type="submit" class="btn-green" style="width: 100%; padding: 10px;">Solicitar Registo</button>
+        </form>
+        <div class="auth-links" style="justify-content: center;">
+            <a onclick="showAuthScreen('auth-login-screen')">Voltar para o Login</a>
+        </div>
+    </div>
+</div>
+
+<!-- ECRÃ DE ESQUECI A SENHA -->
+<div class="auth-container" id="auth-forgot-screen" style="display: none;">
+    <div class="auth-card">
+        <h2>Recuperar Senha</h2>
+        <p style="font-size:0.8rem; color:#666; margin-bottom:15px; text-align:center;">Informe o seu login. O pedido será enviado ao Administrador para aprovação.</p>
+        <form onsubmit="solicitarRedefinicaoSenha(event)">
+            <div class="form-group">
+                <label>Nome do Login</label>
+                <input type="text" id="forgot-login" required placeholder="Digite o seu login">
+            </div>
+            <div class="form-group">
+                <label>Nova Senha Desejada</label>
+                <input type="password" id="forgot-novasenha" required placeholder="Digite a nova senha">
+            </div>
+            <button type="submit" class="btn-orange" style="width: 100%; padding: 10px;">Solicitar Alteração</button>
+        </form>
+        <div class="auth-links" style="justify-content: center;">
+            <a onclick="showAuthScreen('auth-login-screen')">Voltar para o Login</a>
+        </div>
+    </div>
+</div>
+
+<!-- SISTEMA PRINCIPAL (DASHBOARD) -->
+<div class="dashboard-container" id="dashboard-app">
+    <!-- Header -->
+    <div class="header">
+        <div class="brand">
+            <i class="fa-solid fa-industry" style="color: #3a86ff;"></i>
+            <div>NOVA TUBOS</div>
+            <span class="creator-tag">Criador: Tarsis Pereira</span>
+            <div class="user-badge" id="current-user-display"><i class="fa-solid fa-user"></i> <span>-</span></div>
+            <div class="online-badge" id="online-users-display" style="display:none;">
+                <i class="fa-solid fa-circle" style="color:#2a9d8f; font-size:8px;"></i> 
+                <span id="online-count-text">Online: 0</span>
+                <button class="btn-view-online" onclick="openVerOnlineModal()" title="Ver quem está online"><i class="fa-solid fa-eye"></i></button>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="openListaModal()"><i class="fa-solid fa-list-check"></i> Lista de Lançamentos</button>
+            <button class="nav-btn" id="btn-menu-lancamento" onclick="openLancamentoModal()"><i class="fa-solid fa-pen-to-square"></i> Menu Lançamento</button>
+            <button class="nav-btn active"><i class="fa-solid fa-chart-column"></i> Análise de KPIs</button>
+            <button class="nav-btn" id="btn-gestao-usuarios" style="display:none;" onclick="openUsuariosModal()"><i class="fa-solid fa-users-gear"></i> Gerir Utilizadores</button>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="openMudarSenhaModal()"><i class="fa-solid fa-key" style="color: #f77f00;"></i>Senha</button>
+            <button class="icon-btn" onclick="openPdfModal()"><i class="fa-solid fa-file-pdf" style="color: #e63946;"></i>Gerar PDF</button>
+            <button class="icon-btn" onclick="exportBackup()"><i class="fa-solid fa-download"></i>Backup</button>
+            <button class="icon-btn" onclick="triggerImport()"><i class="fa-solid fa-upload"></i>Restaurar</button>
+            <button class="icon-btn" onclick="exportCSV()"><i class="fa-solid fa-file-excel"></i>Planilha</button>
+            <button class="icon-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket" style="color:red;"></i>Sair</button>
+            <input type="file" id="fileImport" style="display:none" onchange="importBackup(event)" accept=".json">
+        </div>
+    </div>
+
+    <!-- Barra de Título -->
+    <div class="title-bar">
+        <h1>DASHBOARD - ANÁLISE DE KPIS DE MANUTENÇÃO</h1>
+        <div class="btn-group-header">
+            <button class="btn-green" id="btn-novo-equipamento" onclick="openNovoEquipamentoModal()"><i class="fa-solid fa-plus"></i> Novo Equipamento</button>
+            <button class="btn-blue" onclick="openEquipamentosModal()">Ver equipamentos em manutenção</button>
+        </div>
+    </div>
+
+    <!-- Indicadores Superiores -->
+    <div class="metrics-grid">
+        <div class="card">
+            <div class="card-title">OS Programada</div>
+            <div class="card-body">
+                <i class="fa-regular fa-clipboard card-icon" style="color: #3a86ff;"></i>
+                <span class="card-value" id="kpi-programadas">0</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">OS Finalizada</div>
+            <div class="card-body">
+                <i class="fa-regular fa-circle-check card-icon" style="color: #2a9d8f;"></i>
+                <span class="card-value" id="kpi-finalizadas">0</span>
+            </div>
+            <div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="bar-finalizadas" style="width: 0%; background-color: #2a9d8f;"></div>
+                </div>
+                <div class="percentage-text" id="pct-finalizadas">0%</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">OS em Aberto</div>
+            <div class="card-body">
+                <i class="fa-regular fa-circle-xmark card-icon" style="color: #e63946;"></i>
+                <span class="card-value" id="kpi-abertas">0</span>
+            </div>
+            <div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="bar-abertas" style="width: 0%; background-color: #e63946;"></div>
+                </div>
+                <div class="percentage-text" id="pct-abertas">0%</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Execução Média (Horas)</div>
+            <div class="card-body">
+                <i class="fa-regular fa-clock card-icon" style="color: #e76f51;"></i>
+                <span class="card-value" id="kpi-tempo">00:00 h</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Custo Total Acumulado</div>
+            <div class="card-body">
+                <i class="fa-solid fa-dollar-sign card-icon" style="color: #2a9d8f;"></i>
+                <span class="card-value" id="kpi-custo-total">R$ 0,00</span>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-card">
+            <h4>Filtro</h4>
+            <div class="filter-group">
+                <label>Ano:</label>
+                <select id="filter-ano" onchange="renderDashboard()"></select>
+            </div>
+            <div class="filter-group">
+                <label>Mês Inicial:</label>
+                <select id="filter-mes-ini" onchange="renderDashboard()">
+                    <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                    <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                    <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Mês Final:</label>
+                <select id="filter-mes-fim" onchange="renderDashboard()">
+                    <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                    <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                    <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12" selected>Dezembro</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel de Gráficos -->
+    <div class="charts-grid-top">
+        <div class="chart-card">
+            <div class="chart-header"><span>Status das Ordens</span></div>
+            <div class="chart-container"><canvas id="chartStatus"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header"><span>Áreas de Manutenção</span></div>
+            <div class="chart-container"><canvas id="chartAreas"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header"><span>Tipos de Manutenção</span></div>
+            <div class="chart-container"><canvas id="chartTipos"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header"><span>Prioridade</span></div>
+            <div class="chart-container"><canvas id="chartPrioridade"></canvas></div>
+        </div>
+    </div>
+
+    <div class="charts-grid-bottom">
+        <div class="chart-card">
+            <div class="chart-header"><span>Ocorrências por Equipamento</span></div>
+            <div class="chart-container-large"><canvas id="chartEquipamentos"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <span>Programadas x Finalizadas Mês a Mês</span>
+                <button class="btn-blue" style="font-size: 0.7rem; padding: 3px 10px;" onclick="openEquipamentosModal()">Ver equipamentos</button>
+            </div>
+            <div class="chart-container-large"><canvas id="chartComparativo"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ALTERAR MINHA SENHA -->
+<div class="modal" id="modalMudarSenha">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Alterar Minha Senha</h3>
+            <button class="close-btn" onclick="closeModal('modalMudarSenha')">&times;</button>
+        </div>
+        <form onsubmit="alterarMinhaSenha(event)">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Senha Atual</label>
+                <input type="password" id="pass-atual" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Nova Senha</label>
+                <input type="password" id="pass-nova" required>
+            </div>
+            <button type="submit" class="btn-green" style="width: 100%;">Salvar Nova Senha</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: VER USUÁRIOS ONLINE (APENAS ADM) -->
+<div class="modal" id="modalVerOnline">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-users" style="color: #2a9d8f;"></i> Usuários Conectados Agora</h3>
+            <button class="close-btn" onclick="closeModal('modalVerOnline')">&times;</button>
+        </div>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Login do Usuário</th>
+                        <th>E-mail</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-online"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: GESTÃO DE UTILIZADORES (APENAS ADM) -->
+<div class="modal" id="modalUsuarios">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-users-gear"></i> Painel do ADM - Gestão de Utilizadores</h3>
+            <button class="close-btn" onclick="closeModal('modalUsuarios')">&times;</button>
+        </div>
+        
+        <!-- Total de Usuários Registrados -->
+        <div class="summary-box">
+            <span><i class="fa-solid fa-id-card"></i> Total de Usuários Cadastrados:</span>
+            <span id="total-registered-users" style="font-size: 1.2rem; background: #3a86ff; padding: 2px 10px; border-radius: 4px;">0</span>
+        </div>
+
+        <p style="font-size: 0.8rem; color: #555; margin-bottom: 10px;">Aqui o ADM visualiza senhas, aprova utilizadores, altera estado e pode apagar contas.</p>
+        
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Login</th>
+                        <th>E-mail</th>
+                        <th>Senha</th>
+                        <th>Estado</th>
+                        <th>Editor de Lançamentos?</th>
+                        <th>Aprovador de Contas?</th>
+                        <th>Redefinição PENDENTE?</th>
+                        <th>Ações do ADM</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-usuarios"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: GERAÇÃO DE PDF DA LISTA DE LANÇAMENTOS -->
+<div class="modal" id="modalPdf">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-file-pdf" style="color: #e63946;"></i> Gerar PDF da Lista de Lançamentos</h3>
+            <button class="close-btn" onclick="closeModal('modalPdf')">&times;</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #3a86ff;">
+                <p style="font-size: 0.85rem; color: #555; margin-bottom: 12px;">Gera um relatório técnico profissional contendo a listagem com todos os dados lançados e totalizadores.</p>
+                
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>Selecione o Escopo:</label>
+                    <select id="pdf-tipo-lista" onchange="togglePdfDataRange()">
+                        <option value="completo">Lista Completa (Todos os Lançamentos)</option>
+                        <option value="periodo">Filtrar por Período Específico</option>
+                    </select>
+                </div>
+
+                <div id="pdf-date-range" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group">
+                        <label>Data Inicial:</label>
+                        <input type="date" id="pdf-data-ini">
+                    </div>
+                    <div class="form-group">
+                        <label>Data Final:</label>
+                        <input type="date" id="pdf-data-fim">
+                    </div>
+                </div>
+
+                <button class="btn-blue" style="width: 100%; margin-top: 10px;" onclick="gerarPDFLista()">Exportar PDF da Lista</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: MENU LANÇAMENTO PARA KPI (CADASTRO / EDIÇÃO) -->
+<div class="modal" id="modalLancamento">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-lancamento-title">Menu Lançamento para KPI</h3>
+            <button class="close-btn" onclick="closeModal('modalLancamento')">&times;</button>
+        </div>
+        
+        <form id="formOS" onsubmit="adicionarOS(event)">
+            <input type="hidden" id="form-id-edit" value="">
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Número da Ordem (OS)</label>
+                    <input type="text" id="form-ordem" placeholder="Ex: 1000123" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Equipamento</label>
+                    <select id="form-equipamento" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Executor (Técnico / Responsável)</label>
+                    <input type="text" id="form-executor" placeholder="Ex: Gabriel Paulista" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="form-status" onchange="toggleCancelObs()" required>
+                        <option value="Finalizado">Finalizado</option>
+                        <option value="Aberta">Aberta</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Texto do Motivo da Manutenção / Causa Raiz</label>
+                    <input type="text" id="form-motivo" placeholder="Ex: Troca de rolamento e lubrificação" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Área</label>
+                    <select id="form-area" required>
+                        <option value="Elétrica">Elétrica</option>
+                        <option value="Mecânica">Mecânica</option>
+                        <option value="Eletrônica">Eletrônica</option>
+                        <option value="Instrumentação">Instrumentação</option>
+                        <option value="Operação">Operação</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Manutenção</label>
+                    <select id="form-tipo" required>
+                        <option value="Preventiva">Preventiva</option>
+                        <option value="Corretiva">Corretiva</option>
+                        <option value="Preditiva">Preditiva</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Início - Data</label>
+                    <input type="date" id="form-data-ini" required>
+                </div>
+                <div class="form-group">
+                    <label>Início - Horário</label>
+                    <input type="time" id="form-hora-ini" required>
+                </div>
+                <div class="form-group">
+                    <label>Fim - Data</label>
+                    <input type="date" id="form-data-fim" required>
+                </div>
+                <div class="form-group">
+                    <label>Fim - Horário</label>
+                    <input type="time" id="form-hora-fim" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Mês / Ano Referência</label>
+                    <div style="display:flex; gap:5px;">
+                        <select id="form-mes" style="flex:1;">
+                            <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+                            <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+                            <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+                            <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+                        </select>
+                        <input type="number" id="form-ano" style="flex:1;" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="form-prioridade" required>
+                        <option value="Baixa">Baixa</option>
+                        <option value="Média">Média</option>
+                        <option value="Alta">Alta</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Custos Peças (R$)</label>
+                    <input type="number" step="0.01" id="form-custo-pecas" value="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Custos Terceiros (R$)</label>
+                    <input type="number" step="0.01" id="form-custo-terceiros" value="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label>Outros Custos (R$)</label>
+                    <input type="number" step="0.01" id="form-custo-outros" value="0.00" oninput="toggleObsRequired()">
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Observação (Outros Custos)</label>
+                    <input type="text" id="form-obs-outros" placeholder="Obrigatório caso haja Outros Custos">
+                </div>
+
+                <div class="form-group full-width" id="group-obs-cancelamento" style="display:none;">
+                    <label style="color: #e63946;">Motivo / Obs. do Cancelamento (Opcional)</label>
+                    <input type="text" id="form-obs-cancelamento" placeholder="Ex: Peça indisponível, duplicidade...">
+                </div>
+            </div>
+            <button type="submit" class="btn-blue" id="btn-submit-form" style="width: 100%;">Salvar Lançamento no KPI</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: CADASTRO DE NOVO EQUIPAMENTO -->
+<div class="modal" id="modalNovoEquipamento">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Cadastrar Novo Equipamento</h3>
+            <button class="close-btn" onclick="closeModal('modalNovoEquipamento')">&times;</button>
+        </div>
+        <form onsubmit="cadastrarEquipamento(event)">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Nome do Equipamento / TAG</label>
+                <input type="text" id="novo-nome-equipamento" placeholder="Ex: FORMADORA 10, CORTADEIRA 1" required>
+            </div>
+            <button type="submit" class="btn-green" style="width: 100%;">Cadastrar Equipamento</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: LISTA DE LANÇAMENTOS -->
+<div class="modal" id="modalLista">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Lista Completa de Lançamentos</h3>
+            <button class="close-btn" onclick="closeModal('modalLista')">&times;</button>
+        </div>
+
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nº Ordem</th>
+                        <th>Equipamento</th>
+                        <th>Motivo da Manutenção</th>
+                        <th>Executor</th>
+                        <th>Status</th>
+                        <th>Obs. Cancelamento</th>
+                        <th>Início (Data/Hora)</th>
+                        <th>Fim (Data/Hora)</th>
+                        <th>Custo Peças</th>
+                        <th>Custo Terceiros</th>
+                        <th>Outros Custos</th>
+                        <th>Obs. Outros</th>
+                        <th>Mês/Ano</th>
+                        <th id="th-acoes-lista">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-lista"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EQUIPAMENTOS EM MANUTENÇÃO -->
+<div class="modal" id="modalEquipamentos">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Equipamentos em Manutenção</h3>
+            <button class="close-btn" onclick="closeModal('modalEquipamentos')">&times;</button>
+        </div>
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Equipamento</th>
+                        <th>Nº Ordem</th>
+                        <th>Motivo</th>
+                        <th>Executor</th>
+                        <th>Status</th>
+                        <th>Início Data/Hora</th>
+                        <th>Fim Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body-equipamentos"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ÁREA OCULTA PARA IMPRESSÃO DO RELATÓRIO PDF DA LISTA COMPLETA -->
+<div id="pdf-table-temp">
+    <table class="pdf-header-table">
+        <tr>
+            <td style="border:none; width: 60%;">
+                <h1 style="color: #1e3a60; font-size: 18px; margin: 0;">NOVA TUBOS</h1>
+                <p style="font-size: 11px; color: #555; margin-top: 3px;">Relatório Técnico de Manutenção & Lançamentos</p>
+            </td>
+            <td style="border:none; text-align: right; font-size: 9px; color: #555;">
+                <p><strong>Criador:</strong> Tarsis Pereira</p>
+                <p id="pdf-data-geracao"></p>
+                <p id="pdf-table-subtitle" style="font-weight: bold; color: #1e3a60; margin-top: 3px;"></p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="pdf-report-table">
+        <thead>
+            <tr>
+                <th>Nº OS</th>
+                <th>Equipamento</th>
+                <th>Motivo / Causa Raiz</th>
+                <th>Executor</th>
+                <th>Status</th>
+                <th>Obs. Cancelamento</th>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Peças (R$)</th>
+                <th>Terceiros (R$)</th>
+                <th>Outros (R$)</th>
+                <th>Total (R$)</th>
+            </tr>
+        </thead>
+        <tbody id="pdf-table-body"></tbody>
+    </table>
+
+    <div class="pdf-report-footer">
+        <span id="pdf-total-os">Total de Ordens: 0</span>
+        <span id="pdf-total-custo">Custo Geral: R$ 0,00</span>
+    </div>
+</div>
+
+<script>
+    const anoAtualSistema = new Date().getFullYear();
+
+    /* GERENCIAMENTO DE UTILIZADORES E SESSÃO */
+    const usuariosPadrao = [
+        {
+            login: 'ADM.TARSIS.PEREIRA',
+            senha: 'profissinaltools',
+            email: 'adm.tarsis@novatubos.com',
+            isAdm: true,
+            ativo: true,
+            podeEditar: true,
+            podeAprovar: true,
+            redefinicaoPendente: null
+        }
+    ];
+
+    let usuariosBD = JSON.parse(localStorage.getItem('nova_tubos_usuarios')) || usuariosPadrao;
+    let usuarioLogado = JSON.parse(sessionStorage.getItem('nova_tubos_sessao')) || null;
+    let sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
+
+    function salvarUsuarios() {
+        localStorage.setItem('nova_tubos_usuarios', JSON.stringify(usuariosBD));
+    }
+
+    function atualizarHeartbeat() {
+        if (!usuarioLogado) return;
+        sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
+        sessoesAtivasBD[usuarioLogado.login] = Date.now();
+        localStorage.setItem('nova_tubos_sessoes_ativas', JSON.stringify(sessoesAtivasBD));
+
+        if (usuarioLogado.isAdm) {
+            calcularUsuariosOnline();
+        }
+    }
+
+    function getUsuariosOnlineList() {
+        const agora = Date.now();
+        let lista = [];
+        sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
+
+        for (let loginKey in sessoesAtivasBD) {
+            if (agora - sessoesAtivasBD[loginKey] < 15000) {
+                const uObj = usuariosBD.find(u => u.login === loginKey);
+                lista.push(uObj || { login: loginKey, email: '-' });
+            }
+        }
+        return lista;
+    }
+
+    function calcularUsuariosOnline() {
+        const listaOnline = getUsuariosOnlineList();
+        const onlineDisplay = document.getElementById('online-users-display');
+        const countText = document.getElementById('online-count-text');
+
+        if (onlineDisplay && countText) {
+            onlineDisplay.style.display = 'flex';
+            countText.innerText = `Online: ${listaOnline.length}`;
+        }
+    }
+
+    function openVerOnlineModal() {
+        if (!usuarioLogado.isAdm) return;
+        const lista = getUsuariosOnlineList();
+        const tbody = document.getElementById('table-body-online');
+        tbody.innerHTML = '';
+
+        lista.forEach(u => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${u.login}</strong></td>
+                    <td>${u.email || '-'}</td>
+                    <td><span style="color:green; font-weight:bold;"><i class="fa-solid fa-circle" style="font-size:8px;"></i> Conectado</span></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('modalVerOnline').classList.add('active');
+    }
+
+    function showAuthScreen(screenId) {
+        document.getElementById('auth-login-screen').style.display = 'none';
+        document.getElementById('auth-register-screen').style.display = 'none';
+        document.getElementById('auth-forgot-screen').style.display = 'none';
+        document.getElementById(screenId).style.display = 'flex';
+    }
+
+    function realizarLogin(e) {
+        e.preventDefault();
+        const loginVal = document.getElementById('login-usuario').value.trim();
+        const senhaVal = document.getElementById('login-senha').value.trim();
+
+        const user = usuariosBD.find(u => u.login === loginVal && u.senha === senhaVal);
+
+        if (!user) {
+            alert('Login ou senha incorretos.');
+            return;
+        }
+
+        if (!user.ativo) {
+            alert('A sua conta está inativa ou aguarda aprovação de um Administrador.');
+            return;
+        }
+
+        usuarioLogado = user;
+        sessionStorage.setItem('nova_tubos_sessao', JSON.stringify(user));
+        atualizarHeartbeat();
+        iniciarInterface();
+    }
+
+    function cadastrarUsuario(e) {
+        e.preventDefault();
+        const email = document.getElementById('reg-email').value.trim();
+        const login = document.getElementById('reg-login').value.trim();
+        const senha = document.getElementById('reg-senha').value.trim();
+
+        if (usuariosBD.some(u => u.login.toLowerCase() === login.toLowerCase())) {
+            alert('Este login já existe. Por favor, escolha outro.');
+            return;
+        }
+
+        usuariosBD.push({
+            login: login,
+            senha: senha,
+            email: email,
+            isAdm: false,
+            ativo: false,
+            podeEditar: false,
+            podeAprovar: false,
+            redefinicaoPendente: null
+        });
+
+        salvarUsuarios();
+        alert('Registo solicitado com sucesso! A conta precisa de ser aprovada pelo ADM.');
+        showAuthScreen('auth-login-screen');
+    }
+
+    function solicitarRedefinicaoSenha(e) {
+        e.preventDefault();
+        const login = document.getElementById('forgot-login').value.trim();
+        const novaSenha = document.getElementById('forgot-novasenha').value.trim();
+
+        const user = usuariosBD.find(u => u.login.toLowerCase() === login.toLowerCase());
+        if (!user) {
+            alert('Utilizador não encontrado.');
+            return;
+        }
+
+        user.redefinicaoPendente = novaSenha;
+        salvarUsuarios();
+        alert('Pedido de redefinição de senha enviado! O ADM precisa de aprovar a alteração.');
+        showAuthScreen('auth-login-screen');
+    }
+
+    function logout() {
+        if (usuarioLogado) {
+            sessoesAtivasBD = JSON.parse(localStorage.getItem('nova_tubos_sessoes_ativas')) || {};
+            delete sessoesAtivasBD[usuarioLogado.login];
+            localStorage.setItem('nova_tubos_sessoes_ativas', JSON.stringify(sessoesAtivasBD));
+        }
+        sessionStorage.removeItem('nova_tubos_sessao');
+        usuarioLogado = null;
+        window.location.reload();
+    }
+
+    function iniciarInterface() {
+        document.getElementById('auth-login-screen').style.display = 'none';
+        document.getElementById('dashboard-app').style.display = 'block';
+
+        const badgeText = `${usuarioLogado.login} (${usuarioLogado.isAdm ? 'ADM' : usuarioLogado.podeEditar ? 'Editor' : 'Leitor'})`;
+        document.getElementById('current-user-display').innerHTML = `<i class="fa-solid fa-user"></i> ${badgeText}`;
+
+        if (usuarioLogado.isAdm) {
+            document.getElementById('btn-gestao-usuarios').style.display = 'flex';
+            calcularUsuariosOnline();
+        }
+
+        const temPermissaoEdicao = usuarioLogado.isAdm || usuarioLogado.podeEditar;
+        document.getElementById('btn-menu-lancamento').style.display = temPermissaoEdicao ? 'flex' : 'none';
+        document.getElementById('btn-novo-equipamento').style.display = temPermissaoEdicao ? 'inline-block' : 'none';
+
+        popularSelectEquipamentos();
+        popularAnosFiltro();
+        renderDashboard();
+
+        setInterval(atualizarHeartbeat, 5000);
+    }
+
+    function openMudarSenhaModal() {
+        document.getElementById('modalMudarSenha').classList.add('active');
+    }
+
+    function alterarMinhaSenha(e) {
+        e.preventDefault();
+        const atual = document.getElementById('pass-atual').value;
+        const nova = document.getElementById('pass-nova').value;
+
+        if (atual !== usuarioLogado.senha) {
+            alert('A senha atual está incorreta.');
+            return;
+        }
+
+        const u = usuariosBD.find(u => u.login === usuarioLogado.login);
+        if (u) {
+            u.senha = nova;
+            usuarioLogado.senha = nova;
+            salvarUsuarios();
+            sessionStorage.setItem('nova_tubos_sessao', JSON.stringify(usuarioLogado));
+            alert('Senha alterada com sucesso!');
+            closeModal('modalMudarSenha');
+        }
+    }
+
+    /* GESTÃO DE UTILIZADORES (ADM) */
+    function openUsuariosModal() {
+        if (!usuarioLogado.isAdm) return;
+        renderTableUsuarios();
+        document.getElementById('modalUsuarios').classList.add('active');
+    }
+
+    function renderTableUsuarios() {
+        const tbody = document.getElementById('table-body-usuarios');
+        tbody.innerHTML = '';
+
+        // Atualizar totalizador de usuários cadastrados
+        document.getElementById('total-registered-users').innerText = usuariosBD.length;
+
+        usuariosBD.forEach(u => {
+            if (u.isAdm) return;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${u.login}</strong></td>
+                    <td>${u.email}</td>
+                    <td><strong style="color:#1e3a60;">${u.senha}</strong></td>
+                    <td><span style="color:${u.ativo ? 'green' : 'red'}; font-weight:bold;">${u.ativo ? 'Ativo' : 'Inativo / Pendente'}</span></td>
+                    <td>
+                        <input type="checkbox" ${u.podeEditar ? 'checked' : ''} onchange="togglePermissao('${u.login}', 'podeEditar', this.checked)">
+                    </td>
+                    <td>
+                        <input type="checkbox" ${u.podeAprovar ? 'checked' : ''} onchange="togglePermissao('${u.login}', 'podeAprovar', this.checked)">
+                    </td>
+                    <td>${u.redefinicaoPendente ? '<span style="color:orange; font-weight:bold;">SIM</span>' : 'Não'}</td>
+                    <td>
+                        <button onclick="toggleStatusUsuario('${u.login}')" style="padding: 3px 8px; font-size:0.7rem;" class="${u.ativo ? 'btn-orange' : 'btn-green'}">${u.ativo ? 'Desativar' : 'Aprovar / Ativar'}</button>
+                        <button onclick="apagarUsuario('${u.login}')" class="btn-red" style="padding: 3px 8px; font-size:0.7rem; margin-left:3px;">Apagar</button>
+                        ${u.redefinicaoPendente ? `<button onclick="aprovarRedefinicao('${u.login}')" class="btn-blue" style="padding: 3px 8px; font-size:0.7rem; margin-left:3px;">Aprovar Senha</button>` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function toggleStatusUsuario(login) {
+        const u = usuariosBD.find(user => user.login === login);
+        if (u) {
+            u.ativo = !u.ativo;
+            salvarUsuarios();
+            renderTableUsuarios();
+        }
+    }
+
+    function apagarUsuario(login) {
+        if (confirm(`Tem certeza de que deseja APAGAR permanentemente a conta de ${login}?`)) {
+            usuariosBD = usuariosBD.filter(user => user.login !== login);
+            salvarUsuarios();
+            renderTableUsuarios();
+        }
+    }
+
+    function togglePermissao(login, campo, valor) {
+        const u = usuariosBD.find(user => user.login === login);
+        if (u) {
+            u[campo] = valor;
+            salvarUsuarios();
+        }
+    }
+
+    function aprovarRedefinicao(login) {
+        const u = usuariosBD.find(user => user.login === login);
+        if (u && u.redefinicaoPendente) {
+            u.senha = u.redefinicaoPendente;
+            u.redefinicaoPendente = null;
+            salvarUsuarios();
+            alert(`Nova senha aprovada para o utilizador ${login}!`);
+            renderTableUsuarios();
+        }
+    }
+
+    /* DADOS E LANÇAMENTOS KPIS */
+    const listaEquipamentosPadrao = ['FORMADORA 5', 'FORMADORA 6', 'FORMADORA 9', 'SLITTER BQ', 'SLITTER BF'];
+    let listaEquipamentos = JSON.parse(localStorage.getItem('nova_tubos_equipamentos')) || listaEquipamentosPadrao;
+
+    const dadosIniciais = [
+        {
+            id: 1, ordem: '1000123', equipamento: 'SLITTER BQ', motivo: 'Falha no sensor do painel', executor: 'Gabriel Paulista', status: 'Finalizado',
+            area: 'Elétrica', tipo: 'Corretiva', prioridade: 'Alta', dataIni: `${anoAtualSistema}-03-01`, horaIni: '08:00', dataFim: `${anoAtualSistema}-03-01`, horaFim: '10:00',
+            custoPecas: 150, custoTerceiros: 0, custoOutros: 70, obsOutros: 'Alimentação técnica extra', obsCancelamento: '', mes: 3, ano: anoAtualSistema
+        }
+    ];
+
+    let ordensServico = JSON.parse(localStorage.getItem('nova_tubos_kpi_db')) || dadosIniciais;
+    let charts = {};
+
+    function salvarLocal() {
+        localStorage.setItem('nova_tubos_kpi_db', JSON.stringify(ordensServico));
+        localStorage.setItem('nova_tubos_equipamentos', JSON.stringify(listaEquipamentos));
+    }
+
+    function popularSelectEquipamentos() {
+        const select = document.getElementById('form-equipamento');
+        select.innerHTML = '';
+        listaEquipamentos.forEach(eq => {
+            select.innerHTML += `<option value="${eq}">${eq}</option>`;
+        });
+    }
+
+    function popularAnosFiltro() {
+        const selectAno = document.getElementById('filter-ano');
+        let anos = [...new Set(ordensServico.map(o => o.ano))];
+        
+        if (!anos.includes(anoAtualSistema)) anos.push(anoAtualSistema);
+        anos.sort((a,b) => a - b);
+
+        selectAno.innerHTML = '';
+        anos.forEach(a => {
+            selectAno.innerHTML += `<option value="${a}" ${a === anoAtualSistema ? 'selected' : ''}>${a}</option>`;
+        });
+
+        document.getElementById('form-ano').value = anoAtualSistema;
+    }
+
+    function resetFormLancamento() {
+        document.getElementById('formOS').reset();
+        document.getElementById('form-id-edit').value = '';
+        document.getElementById('modal-lancamento-title').innerText = 'Menu Lançamento para KPI';
+        document.getElementById('btn-submit-form').innerText = 'Salvar Lançamento no KPI';
+        toggleCancelObs();
+    }
+
+    function openLancamentoModal() { 
+        if (!usuarioLogado.isAdm && !usuarioLogado.podeEditar) return;
+        popularSelectEquipamentos(); 
+        resetFormLancamento();
+        document.getElementById('modalLancamento').classList.add('active'); 
+    }
+
+    function openNovoEquipamentoModal() { 
+        if (!usuarioLogado.isAdm && !usuarioLogado.podeEditar) return;
+        document.getElementById('modalNovoEquipamento').classList.add('active'); 
+    }
+
+    function openListaModal() { renderTableLista(); document.getElementById('modalLista').classList.add('active'); }
+    function openEquipamentosModal() { renderTableEquipamentos(); document.getElementById('modalEquipamentos').classList.add('active'); }
+    function openPdfModal() { document.getElementById('modalPdf').classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    function togglePdfDataRange() {
+        const modo = document.getElementById('pdf-tipo-lista').value;
+        document.getElementById('pdf-date-range').style.display = modo === 'periodo' ? 'grid' : 'none';
+    }
+
+    function cadastrarEquipamento(e) {
+        e.preventDefault();
+        const nome = document.getElementById('novo-nome-equipamento').value.trim().toUpperCase();
+        if (nome && !listaEquipamentos.includes(nome)) {
+            listaEquipamentos.push(nome);
+            salvarLocal();
+            popularSelectEquipamentos();
+            document.getElementById('novo-nome-equipamento').value = '';
+            closeModal('modalNovoEquipamento');
+            renderDashboard();
+            alert(`Equipamento "${nome}" cadastrado com sucesso!`);
+        } else {
+            alert('Equipamento já cadastrado ou nome inválido.');
+        }
+    }
+
+    function toggleObsRequired() {
+        const custoOutros = parseFloat(document.getElementById('form-custo-outros').value) || 0;
+        const inputObs = document.getElementById('form-obs-outros');
+        if (custoOutros > 0) {
+            inputObs.setAttribute('required', 'required');
+        } else {
+            inputObs.removeAttribute('required');
+        }
+    }
+
+    function toggleCancelObs() {
+        const status = document.getElementById('form-status').value;
+        const divObs = document.getElementById('group-obs-cancelamento');
+        divObs.style.display = (status === 'Cancelado') ? 'flex' : 'none';
+    }
+
+    function editarOS(id) {
+        if (!usuarioLogado.isAdm && !usuarioLogado.podeEditar) return;
+        const os = ordensServico.find(o => o.id === id);
+        if (!os) return;
+
+        popularSelectEquipamentos();
+        closeModal('modalLista');
+
+        document.getElementById('form-id-edit').value = os.id;
+        document.getElementById('form-ordem').value = os.ordem;
+        document.getElementById('form-equipamento').value = os.equipamento;
+        document.getElementById('form-executor').value = os.executor;
+        document.getElementById('form-status').value = os.status;
+        document.getElementById('form-motivo').value = os.motivo;
+        document.getElementById('form-area').value = os.area;
+        document.getElementById('form-tipo').value = os.tipo;
+        document.getElementById('form-prioridade').value = os.prioridade;
+        document.getElementById('form-data-ini').value = os.dataIni;
+        document.getElementById('form-hora-ini').value = os.horaIni;
+        document.getElementById('form-data-fim').value = os.dataFim;
+        document.getElementById('form-hora-fim').value = os.horaFim;
+        document.getElementById('form-mes').value = os.mes;
+        document.getElementById('form-ano').value = os.ano;
+        document.getElementById('form-custo-pecas').value = os.custoPecas;
+        document.getElementById('form-custo-terceiros').value = os.custoTerceiros;
+        document.getElementById('form-custo-outros').value = os.custoOutros;
+        document.getElementById('form-obs-outros').value = os.obsOutros || '';
+        document.getElementById('form-obs-cancelamento').value = os.obsCancelamento || '';
+
+        toggleCancelObs();
+        toggleObsRequired();
+
+        document.getElementById('modal-lancamento-title').innerText = 'Editar Lançamento de Ordem';
+        document.getElementById('btn-submit-form').innerText = 'Atualizar Lançamento no KPI';
+        document.getElementById('modalLancamento').classList.add('active');
+    }
+
+    function adicionarOS(e) {
+        e.preventDefault();
+        if (!usuarioLogado.isAdm && !usuarioLogado.podeEditar) return;
+
+        const custoOutrosVal = parseFloat(document.getElementById('form-custo-outros').value) || 0;
+        const obsOutrosVal = document.getElementById('form-obs-outros').value;
+
+        if (custoOutrosVal > 0 && !obsOutrosVal.trim()) {
+            alert('Por favor, informe a observação referente ao campo Outros Custos.');
+            return;
+        }
+
+        const editId = document.getElementById('form-id-edit').value;
+
+        const dadosOS = {
+            id: editId ? parseInt(editId) : Date.now(),
+            ordem: document.getElementById('form-ordem').value,
+            equipamento: document.getElementById('form-equipamento').value,
+            executor: document.getElementById('form-executor').value,
+            status: document.getElementById('form-status').value,
+            motivo: document.getElementById('form-motivo').value,
+            area: document.getElementById('form-area').value,
+            tipo: document.getElementById('form-tipo').value,
+            prioridade: document.getElementById('form-prioridade').value,
+            dataIni: document.getElementById('form-data-ini').value,
+            horaIni: document.getElementById('form-hora-ini').value,
+            dataFim: document.getElementById('form-data-fim').value,
+            horaFim: document.getElementById('form-hora-fim').value,
+            mes: parseInt(document.getElementById('form-mes').value),
+            ano: parseInt(document.getElementById('form-ano').value) || anoAtualSistema,
+            custoPecas: parseFloat(document.getElementById('form-custo-pecas').value) || 0,
+            custoTerceiros: parseFloat(document.getElementById('form-custo-terceiros').value) || 0,
+            custoOutros: custoOutrosVal,
+            obsOutros: obsOutrosVal,
+            obsCancelamento: document.getElementById('form-obs-cancelamento').value
+        };
+
+        if (editId) {
+            const index = ordensServico.findIndex(o => o.id === parseInt(editId));
+            if (index !== -1) ordensServico[index] = dadosOS;
+            alert('Lançamento atualizado com sucesso!');
+        } else {
+            ordensServico.push(dadosOS);
+            alert('Lançamento salvo com sucesso no KPI!');
+        }
+
+        salvarLocal();
+        popularAnosFiltro();
+        closeModal('modalLancamento');
+        renderDashboard();
+    }
+
+    function removerOS(id) {
+        if (!usuarioLogado.isAdm) {
+            alert('Apenas o ADM pode excluir lançamentos.');
+            return;
+        }
+
+        if (confirm("Tem certeza de que deseja remover este lançamento?")) {
+            ordensServico = ordensServico.filter(o => o.id !== id);
+            salvarLocal();
+            renderTableLista();
+            renderDashboard();
+        }
+    }
+
+    function renderTableLista() {
+        const tbody = document.getElementById('table-body-lista');
+        tbody.innerHTML = '';
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const temPermissaoEdicao = usuarioLogado.isAdm || usuarioLogado.podeEditar;
+
+        ordensServico.forEach(os => {
+            let acoes = '-';
+            if (temPermissaoEdicao) {
+                acoes = `<button onclick="editarOS(${os.id})" title="Editar" style="color:#3a86ff; border:none; background:none; cursor:pointer; margin-right:8px;"><i class="fa-solid fa-pen"></i></button>`;
+                if (usuarioLogado.isAdm) {
+                    acoes += `<button onclick="removerOS(${os.id})" title="Excluir" style="color:red; border:none; background:none; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>`;
+                }
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${os.ordem}</strong></td>
+                    <td><strong>${os.equipamento}</strong></td>
+                    <td>${os.motivo}</td>
+                    <td>${os.executor}</td>
+                    <td>${os.status}</td>
+                    <td>${os.obsCancelamento || '-'}</td>
+                    <td>${os.dataIni} ${os.horaIni}</td>
+                    <td>${os.dataFim} ${os.horaFim}</td>
+                    <td>R$ ${(os.custoPecas || 0).toFixed(2)}</td>
+                    <td>R$ ${(os.custoTerceiros || 0).toFixed(2)}</td>
+                    <td>R$ ${(os.custoOutros || 0).toFixed(2)}</td>
+                    <td>${os.obsOutros || '-'}</td>
+                    <td>${meses[os.mes - 1]}/${os.ano}</td>
+                    <td>${acoes}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function renderTableEquipamentos() {
+        const tbody = document.getElementById('table-body-equipamentos');
+        tbody.innerHTML = '';
+
+        ordensServico.forEach(os => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${os.equipamento}</strong></td>
+                    <td>${os.ordem}</td>
+                    <td>${os.motivo}</td>
+                    <td>${os.executor}</td>
+                    <td>${os.status}</td>
+                    <td>${os.dataIni} ${os.horaIni}</td>
+                    <td>${os.dataFim} ${os.horaFim}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function getFilteredData() {
+        const ano = parseInt(document.getElementById('filter-ano').value) || anoAtualSistema;
+        const mesIni = parseInt(document.getElementById('filter-mes-ini').value);
+        const mesFim = parseInt(document.getElementById('filter-mes-fim').value);
+
+        return ordensServico.filter(os => os.ano === ano && os.mes >= mesIni && os.mes <= mesFim);
+    }
+
+    function calcularTempoMedio(data) {
+        let totalMinutos = 0;
+        let contagem = 0;
+
+        data.forEach(os => {
+            if (os.dataIni && os.horaIni && os.dataFim && os.horaFim) {
+                const start = new Date(`${os.dataIni}T${os.horaIni}`);
+                const end = new Date(`${os.dataFim}T${os.horaFim}`);
+                const diffMs = end - start;
+                if (diffMs > 0) {
+                    totalMinutos += diffMs / (1000 * 60);
+                    contagem++;
+                }
+            }
+        });
+
+        if (contagem === 0) return "00:00 h";
+        const mediaMin = totalMinutos / contagem;
+        const horas = Math.floor(mediaMin / 60);
+        const minutos = Math.round(mediaMin % 60);
+        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')} h`;
+    }
+
+    function renderDashboard() {
+        const data = getFilteredData();
+
+        const totalProgramadas = data.length;
+        const totalFinalizadas = data.filter(os => os.status === 'Finalizado').length;
+        const totalAbertas = data.filter(os => os.status === 'Aberta' || os.status === 'Em andamento').length;
+
+        const pctFin = totalProgramadas > 0 ? ((totalFinalizadas / totalProgramadas) * 100).toFixed(2) : 0;
+        const pctAbe = totalProgramadas > 0 ? ((totalAbertas / totalProgramadas) * 100).toFixed(2) : 0;
+
+        document.getElementById('kpi-programadas').innerText = totalProgramadas;
+        document.getElementById('kpi-finalizadas').innerText = totalFinalizadas;
+        document.getElementById('pct-finalizadas').innerText = pctFin + '%';
+        document.getElementById('bar-finalizadas').style.width = pctFin + '%';
+
+        document.getElementById('kpi-abertas').innerText = totalAbertas;
+        document.getElementById('pct-abertas').innerText = pctAbe + '%';
+        document.getElementById('bar-abertas').style.width = pctAbe + '%';
+
+        document.getElementById('kpi-tempo').innerText = calcularTempoMedio(data);
+
+        let custoTotal = 0;
+        data.forEach(os => custoTotal += (os.custoPecas||0) + (os.custoTerceiros||0) + (os.custoOutros||0));
+        document.getElementById('kpi-custo-total').innerText = 'R$ ' + custoTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+
+        updateChartStatus(data);
+        updateChartAreas(data);
+        updateChartTipos(data);
+        updateChartPrioridade(data);
+        updateChartEquipamentos(data);
+        updateChartComparativo(data);
+    }
+
+    const customDataLabels = {
+        id: 'customDataLabels',
+        afterDraw(chart) {
+            const { ctx } = chart;
+            chart.data.datasets.forEach((dataset, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                    const value = dataset.data[index];
+                    if (value !== undefined && value > 0) {
+                        ctx.fillStyle = '#333';
+                        ctx.font = 'bold 10px sans-serif';
+                        if (chart.options.indexAxis === 'y') {
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(value, bar.x + 4, bar.y);
+                        } else {
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            ctx.fillText(value, bar.x, bar.y - 2);
+                        }
+                    }
+                });
+            });
+        }
+    };
+
+    function updateChartStatus(data) {
+        const counts = { 'Finalizado': 0, 'Cancelado': 0, 'Aberta': 0, 'Em andamento': 0 };
+        data.forEach(os => counts[os.status] = (counts[os.status] || 0) + 1);
+
+        if(charts.status) charts.status.destroy();
+        charts.status = new Chart(document.getElementById('chartStatus'), {
+            type: 'bar', plugins: [customDataLabels],
+            data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: '#3b5998' }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateChartAreas(data) {
+        const areas = ['Elétrica', 'Mecânica', 'Eletrônica', 'Instrumentação', 'Operação'];
+        const counts = areas.map(a => data.filter(os => os.area === a).length);
+
+        if(charts.areas) charts.areas.destroy();
+        charts.areas = new Chart(document.getElementById('chartAreas'), {
+            type: 'bar', plugins: [customDataLabels],
+            data: { labels: areas, datasets: [{ data: counts, backgroundColor: '#3b5998' }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateChartTipos(data) {
+        const tipos = ['Preventiva', 'Corretiva', 'Preditiva'];
+        const counts = tipos.map(t => data.filter(os => os.tipo === t).length);
+
+        if(charts.tipos) charts.tipos.destroy();
+        charts.tipos = new Chart(document.getElementById('chartTipos'), {
+            type: 'bar', plugins: [customDataLabels],
+            data: { labels: tipos, datasets: [{ data: counts, backgroundColor: '#5b9bd5' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { display: false }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateChartPrioridade(data) {
+        const prio = ['Baixa', 'Média', 'Alta'];
+        const counts = prio.map(p => data.filter(os => os.prioridade === p).length);
+
+        if(charts.prioridade) charts.prioridade.destroy();
+        charts.prioridade = new Chart(document.getElementById('chartPrioridade'), {
+            type: 'doughnut',
+            data: { labels: prio, datasets: [{ data: counts, backgroundColor: ['#92d050', '#ffc000', '#ed5565'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right' } }, cutout: '60%' }
+        });
+    }
+
+    function updateChartEquipamentos(data) {
+        const counts = listaEquipamentos.map(e => data.filter(os => os.equipamento === e).length);
+
+        if(charts.equipamentos) charts.equipamentos.destroy();
+        charts.equipamentos = new Chart(document.getElementById('chartEquipamentos'), {
+            type: 'bar', plugins: [customDataLabels],
+            data: { labels: listaEquipamentos, datasets: [{ data: counts, backgroundColor: '#3b5998' }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function updateChartComparativo(data) {
+        const mesesLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const prog = Array(12).fill(0);
+        const fin = Array(12).fill(0);
+
+        data.forEach(os => {
+            const m = os.mes - 1;
+            if (m >= 0 && m < 12) {
+                prog[m]++;
+                if (os.status === 'Finalizado') fin[m]++;
+            }
+        });
+
+        if(charts.comparativo) charts.comparativo.destroy();
+        charts.comparativo = new Chart(document.getElementById('chartComparativo'), {
+            type: 'bar', plugins: [customDataLabels],
+            data: {
+                labels: mesesLabels,
+                datasets: [
+                    { label: 'Programado', data: prog, backgroundColor: '#a5a5a5' },
+                    { label: 'Finalizado', data: fin, backgroundColor: '#3b5998' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+        });
+    }
+
+    /* GERAÇÃO DE PDF DA LISTA DE LANÇAMENTOS */
+    function gerarPDFLista() {
+        const modo = document.getElementById('pdf-tipo-lista').value;
+        let dadosExportar = ordensServico;
+        let subtitulo = "Lista Completa de Lançamentos de Manutenção";
+
+        if (modo === 'periodo') {
+            const dataIni = document.getElementById('pdf-data-ini').value;
+            const dataFim = document.getElementById('pdf-data-fim').value;
+
+            if (!dataIni || !dataFim) {
+                alert("Por favor, selecione as datas Inicial e Final para o período.");
+                return;
+            }
+
+            dadosExportar = ordensServico.filter(os => os.dataIni >= dataIni && os.dataIni <= dataFim);
+            subtitulo = `Filtrado por Período: ${dataIni.split('-').reverse().join('/')} até ${dataFim.split('-').reverse().join('/')}`;
+        }
+
+        const tbody = document.getElementById('pdf-table-body');
+        tbody.innerHTML = '';
+
+        let custoGeralPecas = 0;
+        let custoGeralTerceiros = 0;
+        let custoGeralOutros = 0;
+        let custoGeralTotal = 0;
+
+        dadosExportar.forEach(os => {
+            const cPecas = os.custoPecas || 0;
+            const cTerceiros = os.custoTerceiros || 0;
+            const cOutros = os.custoOutros || 0;
+            const totalOS = cPecas + cTerceiros + cOutros;
+
+            custoGeralPecas += cPecas;
+            custoGeralTerceiros += cTerceiros;
+            custoGeralOutros += cOutros;
+            custoGeralTotal += totalOS;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${os.ordem}</strong></td>
+                    <td><strong>${os.equipamento}</strong></td>
+                    <td>${os.motivo}</td>
+                    <td>${os.executor}</td>
+                    <td>${os.status}</td>
+                    <td>${os.obsCancelamento || '-'}</td>
+                    <td>${os.dataIni ? os.dataIni.split('-').reverse().join('/') : ''} ${os.horaIni || ''}</td>
+                    <td>${os.dataFim ? os.dataFim.split('-').reverse().join('/') : ''} ${os.horaFim || ''}</td>
+                    <td>R$ ${cPecas.toFixed(2)}</td>
+                    <td>R$ ${cTerceiros.toFixed(2)}</td>
+                    <td>R$ ${cOutros.toFixed(2)}</td>
+                    <td><strong>R$ ${totalOS.toFixed(2)}</strong></td>
+                </tr>
+            `;
+        });
+
+        const agora = new Date();
+        document.getElementById('pdf-data-geracao').innerText = `Emissão: ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}`;
+        document.getElementById('pdf-table-subtitle').innerText = subtitulo;
+        document.getElementById('pdf-total-os').innerText = `Total de Ordens Registradas: ${dadosExportar.length}`;
+        document.getElementById('pdf-total-custo').innerText = `Custo Acumulado Total: R$ ${custoGeralTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+
+        const element = document.getElementById('pdf-table-temp');
+        element.style.display = 'block';
+
+        closeModal('modalPdf');
+
+        const opt = {
+            margin:       [8, 8, 8, 8],
+            filename:     `relatorio_lancamentos_nova_tubos_${agora.toISOString().slice(0,10)}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none';
+        });
+    }
+
+    function exportBackup() {
+        const jsonStr = JSON.stringify({ ordens: ordensServico, equipamentos: listaEquipamentos, usuarios: usuariosBD }, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_kpi_nova_tubos_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function triggerImport() { 
+        if (!usuarioLogado.isAdm) {
+            alert('Apenas o ADM pode importar dados.');
+            return;
+        }
+        document.getElementById('fileImport').click(); 
+    }
+
+    function importBackup(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const parsed = JSON.parse(evt.target.result);
+                if (parsed.ordens) {
+                    ordensServico = parsed.ordens;
+                    listaEquipamentos = parsed.equipamentos || listaEquipamentosPadrao;
+                    if (parsed.usuarios) usuariosBD = parsed.usuarios;
+                } else {
+                    ordensServico = parsed;
+                }
+                salvarLocal();
+                salvarUsuarios();
+                popularAnosFiltro();
+                popularSelectEquipamentos();
+                renderDashboard();
+                alert("Backup importado com sucesso!");
+            } catch(err) {
+                alert("Ficheiro inválido.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function exportCSV() {
+        let csv = "Ordem;Equipamento;Motivo;Executor;Status;ObsCancelamento;Area;Tipo;Prioridade;DataInicio;HoraInicio;DataFim;HoraFim;CustoPecas;CustoTerceiros;CustoOutros;ObsOutros;Mes;Ano\n";
+        ordensServico.forEach(o => {
+            csv += `${o.ordem};${o.equipamento};${o.motivo};${o.executor};${o.status};${o.obsCancelamento || ''};${o.area};${o.tipo};${o.prioridade};${o.dataIni};${o.horaIni};${o.dataFim};${o.horaFim};${o.custoPecas};${o.custoTerceiros};${o.custoOutros};${o.obsOutros};${o.mes};${o.ano}\n`;
+        });
+        const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_kpi_nova_tubos.csv`;
+        a.click();
+    }
+
+    window.onload = function() {
+        salvarUsuarios();
+
+        if (usuarioLogado) {
+            iniciarInterface();
+        } else {
+            showAuthScreen('auth-login-screen');
+        }
+    };
+</script>
+
+</body>
+</html>
